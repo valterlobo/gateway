@@ -28,7 +28,7 @@ func (processor Processor) ProcessQueryHandler(name string, query Resquest) Resp
 	if queryHandler == nil {
 		var errorReturn = fmt.Errorf("QueryHandler:[%s] NÃO DEFINIDO", name)
 		return Response{
-			UUID:   "3232323232",
+			UUID:   "32323////??????23232",
 			Failed: true,
 			Error:  []error{errorReturn},
 		}

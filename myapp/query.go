@@ -26,3 +26,7 @@ func (ola HelloQueryHandler) GetName()  string {
 
 	return ola.Name
 }
+
+
+
+

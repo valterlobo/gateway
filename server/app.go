@@ -3,94 +3,141 @@ package server
 import (
 	"errors"
 	"gateway/command"
-	"gateway/myapp"
 	"gateway/query"
 	"github.com/gofiber/fiber"
+	"github.com/gofiber/utils"
+	"log"
 )
 
 type AppGateway struct {
-	CommandGateway *command.Gateway
-	QueryGateway   *query.Gateway
+	commandGateway *command.Gateway
+	queryGateway   *query.Gateway
+	serverFiber    *fiber.App
 }
 
-func NewAppGateway(api fiber.Router) {
+func NewAppGateway() *AppGateway {
 
-	appGateway := AppGateway{}
-	appGateway.ConfigQueryGateway()
-	appGateway.AddQueryHandler()
-
-	appGateway.ConfigCommandGateway()
+	appGateway := &AppGateway{}
+	errorQuery := appGateway.configQueryGateway()
+	fail(errorQuery)
+	errorCmd := appGateway.configCommandGateway()
+	fail(errorCmd)
+	appGateway.serverFiber = fiber.New()
 
 	//ROUTER
-	api.Post("/command/:namespace/:commandtype", appGateway.CommandHandler)
-	api.Get("/query/:namespace/:querytype", appGateway.QueryHandler)
+	appGateway.serverFiber.Post("/command/:namespace/:commandtype", appGateway.commandHandler)
+	appGateway.serverFiber.Get("/query/:namespace/:querytype", appGateway.queryHandler)
+	appGateway.serverFiber.Get("/status", appGateway.status)
+
+	return appGateway
 
 }
-func (app *AppGateway) ConfigQueryGateway() error {
+
+func (app *AppGateway) Start() error {
+
+	return app.serverFiber.Listen(3000)
+
+}
+func (app *AppGateway) configQueryGateway() error {
 
 	processor := query.NewQueryProcessor()
 	if processor == nil {
 		return errors.New("QueryProcessor not config")
 	}
-	app.QueryGateway = &query.Gateway{Processor: processor}
+	app.queryGateway = &query.Gateway{Processor: processor}
 
-	if app.QueryGateway == nil {
+	if app.queryGateway == nil {
 		return errors.New("QueryGateway not config")
 	}
 
 	return nil
 }
 
-func (app *AppGateway) ConfigCommandGateway() error {
+func (app *AppGateway) configCommandGateway() error {
 
 	cmdProcessor := command.NewCommandProcessor()
 	if cmdProcessor == nil {
 		return errors.New("CMD Processor not config")
 	}
-	app.CommandGateway = &command.Gateway{Processor: cmdProcessor}
+	app.commandGateway = &command.Gateway{Processor: cmdProcessor}
 
-	if app.CommandGateway == nil {
+	if app.commandGateway == nil {
 		return errors.New("CommandGateway not config")
 	}
 	return nil
 
 }
 
-func (app *AppGateway) AddQueryHandler() error {
+func (app *AppGateway) AddQueryHandler(queryHandler query.Handler) error {
 
-	return app.QueryGateway.Processor.AddQueryHandler(myapp.HelloQueryHandler{Database: "123 teste", Name: "hello.ola"})
-
-}
-
-func (app *AppGateway) CommandHandler(ctx *fiber.Ctx) {
-
-	//namespace := ctx.Params("namespace")
-	//commandtype := ctx.Params("commandtype")
-	commandData := ctx.Body()
-
-	ctx.JSON(commandData)
+	return app.queryGateway.Processor.AddQueryHandler(queryHandler)
 
 }
 
-func (app *AppGateway) QueryHandler(ctx *fiber.Ctx) {
+func (app *AppGateway) AddCommandHandler(cmdHandler command.Handler) error {
+
+	return app.commandGateway.Processor.AddCommandHandler(cmdHandler)
+
+}
+
+func (app *AppGateway) commandHandler(ctx *fiber.Ctx) {
+
+	namespace := ctx.Params("namespace")
+	commandtype := ctx.Params("commandtype")
+
+	cmdName := namespace + "." + commandtype
+	exists := app.commandGateway.Processor.ExistsCommandHandler(cmdName)
+	if !exists {
+		ctx.Status(fiber.StatusNotFound).Send(errors.New("command not exist: " + cmdName))
+		return
+	}
+
+	cmd, errorParam := buildCommand(ctx, namespace, commandtype)
+
+	if errorParam != nil {
+		ctx.Status(fiber.StatusInternalServerError).Send(errorParam)
+		return
+	}
+	errorCommand := app.commandGateway.Send(cmdName, cmd)
+
+	if errorCommand != nil {
+		ctx.Status(fiber.StatusBadRequest).Send(errorCommand)
+		return
+	}
+
+	errorJson := ctx.JSON(Response{UUID: utils.UUID(), RequestUUID: cmd.UUID})
+	fail(errorJson)
+
+}
+
+func (app *AppGateway) queryHandler(ctx *fiber.Ctx) {
 
 	namespace := ctx.Params("namespace")
 	queryType := ctx.Params("querytype")
 
 	queryName := namespace + "." + queryType
-	exists := app.QueryGateway.Processor.ExistsQueryHandler(queryName)
+	exists := app.queryGateway.Processor.ExistsQueryHandler(queryName)
+
 	if !exists {
-		ctx.Status(404).Send(errors.New("query not exist: " + queryName))
-		return
-	}
-	queryRequest, errorParam := buildQueryRequest(ctx, namespace, queryType)
-	if errorParam != nil {
-		ctx.Status(500).Send(errorParam)
+		ctx.Status(fiber.StatusNotFound).Send(errors.New("query not exist: " + queryName))
 		return
 	}
 
-	queryResponse := app.QueryGateway.Query(queryName, queryRequest)
-	ctx.JSON(queryResponse)
+	queryRequest, errorParam := buildQueryRequest(ctx, namespace, queryType)
+
+	if errorParam != nil {
+		ctx.Status(fiber.StatusBadRequest).Send(errorParam)
+		return
+	}
+
+	queryResponse := app.queryGateway.Query(queryName, queryRequest)
+	errorJson := ctx.JSON(queryResponse)
+	fail(errorJson)
+}
+
+func (app *AppGateway) status(ctx *fiber.Ctx) {
+
+	ctx.Send("ON")
 
 }
 
@@ -106,4 +153,23 @@ func buildQueryRequest(ctx *fiber.Ctx, namespace string, queryType string) (quer
 		Sort: []query.SortParameter{sort1, sort2}, Filter: []query.FilterParameter{filter1, filter2, filter3}, Page: 1, Size: 5}
 
 	return queryRequest, nil
+}
+
+func buildCommand(ctx *fiber.Ctx, namespace string, commandtype string) (command.Command, error) {
+
+	var cmd = &command.Command{}
+	property := &command.Property{}
+
+	errorParser := ctx.BodyParser(property)
+	if errorParser != nil {
+		return *cmd, errorParser
+	}
+	cmd = &command.Command{Namespace: namespace, CommandType: commandtype, Property: *property, UUID: utils.UUID()}
+	return *cmd, nil
+}
+
+func fail(err error) {
+	if err != nil {
+		log.Fatal("failed:", err.Error())
+	}
 }

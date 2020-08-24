@@ -21,21 +21,29 @@ func (processor Processor) AddCommandHandler(commandHandler Handler) error {
 	return nil
 }
 
-func (processor Processor) ProcessCommandHandler(name string , cmd  Command) error {
+func (processor Processor) ProcessCommandHandler(name string, cmd Command) error {
 
 	commandHandler := processor.handlers[name]
 	if commandHandler == nil {
 		var errorReturn = fmt.Errorf("CommandHandler:[%s] NÃO DEFINIDO", name)
 		return errorReturn
 	}
-	return commandHandler.Handle(cmd)
+
+	errorValid := commandHandler.Validate(cmd)
+	if errorValid != nil {
+		fmt.Println(errorValid)
+		return errorValid
+	}
+	errorHandle := commandHandler.Handle(cmd)
+	return errorHandle
 }
 
 func (processor Processor) ExistsCommandHandler(name string) bool {
 
-	CommandHandler := processor.handlers[name]
-	if CommandHandler == nil {
+	commandHandler := processor.handlers[name]
+	if commandHandler == nil {
 		return false
 	}
+
 	return true
 }

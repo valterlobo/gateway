@@ -27,7 +27,7 @@ func (direction Direction) IsValid() error {
 	case ASC, DESC:
 		return nil
 	}
-	return errors.New("Invalid Direction type")
+	return errors.New("invalid direction type")
 }
 
 
