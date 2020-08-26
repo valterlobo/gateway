@@ -21,19 +21,26 @@ func NewContatoQueryHandler() ContatoQueryHandler {
 
 func (contatoQuery ContatoQueryHandler) Handle(queryRequest query.Resquest) query.Response {
 
-	fmt.Println("HelloQueryHandlerHelloQueryHandler")
+	fmt.Println("ContatoQueryHandler")
 	fmt.Println(queryRequest)
 	fmt.Println(queryRequest.Sort)
 	fmt.Println(queryRequest.Filter)
 	//queryRequest.Filter
+	pageable := queryutils.PageableData{Page: queryRequest.Page, Size: queryRequest.Size , Sort: queryRequest.Sort}
 	var queryResponse query.Response
+	if queryRequest.Filter == nil || queryRequest.Filter["nome"] == nil {
+		return query.BuildQueryReponseError("Filter/nome não enviado", queryRequest)
+	}
+	searchName := queryRequest.Filter["nome"]["value"]
 
-	pageable := queryutils.PageableData{Page: queryRequest.Page , Size: queryRequest.Size}
-	contatosPage, err := contatoQuery.ContatoRepository.GetByNamePage("lobo" , pageable)
+	if searchName == "" {
+		return query.BuildQueryReponseError("Nome não enviado", queryRequest)
+	}
+	contatosPage, err := contatoQuery.ContatoRepository.GetByNamePage(searchName, pageable)
 	if err != nil {
-		queryResponse = query.Response{UUID: query.GenerateUUID(), RequestUUID: queryRequest.UUID, Error: []error{err}, Success: false}
+		queryResponse = query.BuildQueryReponseError(err.Error(), queryRequest)
 	} else {
-		queryResponse = query.Response{UUID: query.GenerateUUID(), RequestUUID: queryRequest.UUID, Data: contatosPage, Success: true}
+		queryResponse = query.BuildQueryReponseSucess(contatosPage, queryRequest)
 	}
 	return queryResponse
 }

@@ -5,5 +5,20 @@ type Response struct {
 	Data        interface{}
 	RequestUUID string
 	Success     bool
-	Error       []error
+	ErrorMessage   string
 }
+
+func BuildQueryReponseError(errorMessage string , queryRequest Resquest ) Response {
+
+	return Response{UUID: GenerateUUID(), RequestUUID: queryRequest.UUID, ErrorMessage: errorMessage, Success: false}
+}
+
+func BuildQueryReponseSucess(content interface{} , queryRequest Resquest ) Response {
+
+	return Response{UUID: GenerateUUID(), RequestUUID: queryRequest.UUID, Data : content, Success: true}
+}
+
+
+
+
+

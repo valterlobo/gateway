@@ -29,11 +29,11 @@ func (processor Processor) ProcessQueryHandler(name string, query Resquest) Resp
 
 	queryHandler := processor.handlers[name]
 	if queryHandler == nil {
-		var errorReturn = fmt.Errorf("QueryHandler:[%s] NÃO DEFINIDO", name)
+		var errorMesg = fmt.Sprintf("QueryHandler:[%s] NÃO DEFINIDO", name)
 		return Response{
 			UUID:    GenerateUUID(),
 			Success: false,
-			Error:   []error{errorReturn},
+			ErrorMessage:   errorMesg,
 		}
 	}
 	return queryHandler.Handle(query)

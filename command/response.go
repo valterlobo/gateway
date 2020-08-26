@@ -1,6 +1,4 @@
-package server
-
-
+package command
 
 
 type Response struct {

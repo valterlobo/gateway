@@ -107,7 +107,7 @@ func (app *AppGateway) commandHandler(ctx *fiber.Ctx) {
 		return
 	}
 
-	errorJson := ctx.JSON(Response{UUID: utils.UUID(), RequestUUID: cmd.UUID})
+	errorJson := ctx.JSON(command.Response{UUID: utils.UUID(), RequestUUID: cmd.UUID})
 	fail(errorJson)
 
 }
@@ -152,22 +152,12 @@ func (app *AppGateway) status(ctx *fiber.Ctx) {
 
 func buildQueryRequest(ctx *fiber.Ctx, namespace string, queryType string) (query.Resquest, error) {
 
-	//TESTE
-	/*
-		sort1 := query.SortParameter{Field: "nome", Direction: query.DESC}
-		sort2 := query.SortParameter{Field: "data_cadastro", Direction: query.ASC}
-		filter1 := query.FilterParameter{Field: "nome", Operator: query.EQ, Value: "valter"}
-		filter2 := query.FilterParameter{Field: "data_cadastro", Operator: query.NE, Value: "2020-01-20"}
-		filter3 := query.FilterParameter{Field: "valor", Operator: query.GT, Value: "20800.67"}
-
-
-		filter10 := query.FilterParameter{Field: "nome", Operator: query.LT, Value: "valter"}
-	*/
-
 	strFilterValue := ctx.Query("filter")
+	mapFilter := query.BuildFilter(strFilterValue)
 	fmt.Println(strFilterValue)
 
 	strSortValue := ctx.Query("sort")
+	mapSort := query.BuildSort(strSortValue)
 	fmt.Println(strSortValue)
 
 	strPageValue := ctx.Query("page")
@@ -180,7 +170,14 @@ func buildQueryRequest(ctx *fiber.Ctx, namespace string, queryType string) (quer
 	if errSize != nil {
 		size = 10
 	}
-	queryRequest := query.Resquest{UUID: query.GenerateUUID(), Namespace: namespace, QueryType: queryType, Page: int32(page), Size: int32(size)}
+
+	queryRequest := query.Resquest{UUID: query.GenerateUUID(),
+		Namespace: namespace,
+		QueryType: queryType,
+		Filter:    mapFilter,
+		Sort:      mapSort,
+		Page:      int32(page),
+		Size:      int32(size)}
 
 	return queryRequest, nil
 }
