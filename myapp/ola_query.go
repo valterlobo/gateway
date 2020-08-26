@@ -18,7 +18,7 @@ func (ola HelloQueryHandler) Handle(queryRequest query.Resquest) query.Response 
 	fmt.Println(queryRequest.Sort)
 	fmt.Println(queryRequest.Filter)
 
-	var queryResponse = query.Response{UUID: "2332323" , RequestUUID: queryRequest.UUID}
+	var queryResponse = query.Response{UUID: "2332323" , RequestUUID: queryRequest.UUID , Success: true }
 	return queryResponse
 }
 

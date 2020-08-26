@@ -1,14 +1,9 @@
 package query
 
-
 type Response struct {
-
 	UUID        string
-	Header      []string
-	Page        int64
-	Size        int64
-	Records     []map[string]interface{}
+	Data        interface{}
 	RequestUUID string
-	Failed      bool
+	Success     bool
 	Error       []error
 }

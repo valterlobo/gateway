@@ -52,6 +52,7 @@ const (
 	LT Operator = "<"
 	LTE Operator = "<="
 	NE Operator = "<>"
+	LIKE Operator = "LIKE"
 )
 
 /*

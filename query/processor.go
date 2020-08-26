@@ -1,6 +1,9 @@
 package query
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/gofiber/utils"
+)
 
 type Processor struct {
 	handlers map[string]Handler
@@ -28,9 +31,9 @@ func (processor Processor) ProcessQueryHandler(name string, query Resquest) Resp
 	if queryHandler == nil {
 		var errorReturn = fmt.Errorf("QueryHandler:[%s] NÃO DEFINIDO", name)
 		return Response{
-			UUID:   "32323////??????23232",
-			Failed: true,
-			Error:  []error{errorReturn},
+			UUID:    GenerateUUID(),
+			Success: false,
+			Error:   []error{errorReturn},
 		}
 	}
 	return queryHandler.Handle(query)
@@ -43,4 +46,9 @@ func (processor Processor) ExistsQueryHandler(name string) bool {
 		return false
 	}
 	return true
+}
+
+func GenerateUUID() string {
+
+	return utils.UUID()
 }

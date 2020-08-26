@@ -2,11 +2,13 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"gateway/command"
 	"gateway/query"
 	"github.com/gofiber/fiber"
 	"github.com/gofiber/utils"
 	"log"
+	"strconv"
 )
 
 type AppGateway struct {
@@ -131,8 +133,15 @@ func (app *AppGateway) queryHandler(ctx *fiber.Ctx) {
 	}
 
 	queryResponse := app.queryGateway.Query(queryName, queryRequest)
-	errorJson := ctx.JSON(queryResponse)
-	fail(errorJson)
+	if queryResponse.Success {
+		ctx.Status(fiber.StatusOK)
+		ctx.JSON(queryResponse)
+		return
+	} else {
+		ctx.Status(fiber.StatusBadRequest)
+		ctx.JSON(queryResponse)
+		return
+	}
 }
 
 func (app *AppGateway) status(ctx *fiber.Ctx) {
@@ -144,13 +153,34 @@ func (app *AppGateway) status(ctx *fiber.Ctx) {
 func buildQueryRequest(ctx *fiber.Ctx, namespace string, queryType string) (query.Resquest, error) {
 
 	//TESTE
-	sort1 := query.SortParameter{Field: "nome", Direction: query.DESC}
-	sort2 := query.SortParameter{Field: "data_cadastro", Direction: query.ASC}
-	filter1 := query.FilterParameter{Field: "nome", Operator: query.EQ, Value: "valter"}
-	filter2 := query.FilterParameter{Field: "data_cadastro", Operator: query.NE, Value: "2020-01-20"}
-	filter3 := query.FilterParameter{Field: "valor", Operator: query.GT, Value: "20800.67"}
-	queryRequest := query.Resquest{UUID: "dsdsdsdsds", Namespace: namespace, QueryType: queryType,
-		Sort: []query.SortParameter{sort1, sort2}, Filter: []query.FilterParameter{filter1, filter2, filter3}, Page: 1, Size: 5}
+	/*
+		sort1 := query.SortParameter{Field: "nome", Direction: query.DESC}
+		sort2 := query.SortParameter{Field: "data_cadastro", Direction: query.ASC}
+		filter1 := query.FilterParameter{Field: "nome", Operator: query.EQ, Value: "valter"}
+		filter2 := query.FilterParameter{Field: "data_cadastro", Operator: query.NE, Value: "2020-01-20"}
+		filter3 := query.FilterParameter{Field: "valor", Operator: query.GT, Value: "20800.67"}
+
+
+		filter10 := query.FilterParameter{Field: "nome", Operator: query.LT, Value: "valter"}
+	*/
+
+	strFilterValue := ctx.Query("filter")
+	fmt.Println(strFilterValue)
+
+	strSortValue := ctx.Query("sort")
+	fmt.Println(strSortValue)
+
+	strPageValue := ctx.Query("page")
+	strSizeValue := ctx.Query("size")
+	page, errPage := strconv.ParseInt(strPageValue, 10, 32)
+	if errPage != nil {
+		page = 0
+	}
+	size, errSize := strconv.ParseInt(strSizeValue, 10, 32)
+	if errSize != nil {
+		size = 10
+	}
+	queryRequest := query.Resquest{UUID: query.GenerateUUID(), Namespace: namespace, QueryType: queryType, Page: int32(page), Size: int32(size)}
 
 	return queryRequest, nil
 }
